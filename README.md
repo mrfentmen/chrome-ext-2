@@ -29,6 +29,7 @@ harness needs **Chrome for Testing** or Chromium. The runner auto-discovers it:
 | `./run6.sh` | Corner-drag grips on where-is-iss (map), hacker-news-reader (story list) and wiki-instant (article text): drag math, keyboard arrows, persistence, zero console errors |
 | `./run-offline.sh` | **Two-phase offline regression** for the 7 offline-capable extensions (fact generator kept fact, ISS last fix + STALE badge, HN stories, wiki article, radio stations, PokéTicker + DuelTicker cached card quotes): phase 1 loads real data + saves the cache, phase 2 fails every API request via CDP and proves the saved copy renders with an "Offline — saved …" status and zero uncaught exceptions |
 | `./run2.sh` | Interaction flows across all 11 popups: new fact, PDF convert, ISS refresh, wiki search, resize estimate, undo, radio play, HN tabs, PokéTicker + DuelTicker search→add→quote, SportsTicker token setup→test→save (token-gated: a fake token must produce a completed verdict from the real eBay request path) |
+| `./zip-gate.sh` | **One-command pre-upload gate** — extracts every `upload.zip` into `.zip-e2e/` and runs run-all + run5 + run6 + run-offline against the extracted files (`--run2` adds the interaction flows) |
 
 Each runner exits non-zero on failure, so it can be dropped into a pre-release
 script.
@@ -54,6 +55,8 @@ independent feeds and are unaffected.
 - `run-all.sh`, `run2.sh`, `run3.sh`, `run4.sh`, `run5.sh`, `run6.sh`,
   `run-offline.sh` — one-shot runners (launch headless Chrome, run a test,
   report, clean up)
+- `zip-gate.sh` — one-command pre-upload gate: extracts every `upload.zip`
+  into `.zip-e2e/` and runs the suites against the extracted files
 - `chrome-path.sh` — Chrome for Testing discovery (override with `CHROME=`)
 - `smoke.mjs` — load test + screenshots for all 11 extensions
 - `smoke2.mjs` — interaction flows
@@ -67,29 +70,26 @@ independent feeds and are unaffected.
 
 ## Verifying the upload.zips (pre-upload gate)
 
-Point the harness at freshly extracted zips instead of the live `ext/` folders:
+One command: extract every `upload.zip` into a throwaway `.zip-e2e/` and run
+the whole gate against the **extracted files** — not the live `ext/` folders —
+so what gets tested is exactly what gets uploaded:
 
 ```bash
-BASE='/Users/del/Desktop/REALESED EXT'
-mkdir -p "$BASE/.zip-e2e"
-for d in random-fact-generator image-to-pdf where-is-iss wiki-instant \
-         image-resize-compressor whiteboard internet-radio-player hacker-news-reader \
-         pokemon-price-ticker yugioh-price-ticker sports-card-ticker; do
-  mkdir -p "$BASE/.zip-e2e/$d/ext"
-  unzip -qo "$BASE/$d/upload.zip" -d "$BASE/.zip-e2e/$d/ext"
-done
-cd "$BASE/smoke-harness"
-SMOKE_BASE="$BASE/.zip-e2e" ./run-all.sh   # full 11-extension suite against the zips
-SMOKE_BASE="$BASE/.zip-e2e" ./run5.sh      # whiteboard zoom + editor grips
-SMOKE_BASE="$BASE/.zip-e2e" ./run6.sh      # viewer-popup resize grips
-SMOKE_BASE="$BASE/.zip-e2e" ./run-offline.sh  # offline fallback against the zips
+./zip-gate.sh                # full gate: run-all + run5 + run6 + run-offline
+./zip-gate.sh --run2         # + the 11 interaction flows
+./zip-gate.sh run5 run6      # just the named suites
+./zip-gate.sh --reload       # re-run against the existing .zip-e2e/ (no re-extract)
 ```
+
+The gate wipes `.zip-e2e/` on every run, reports each suite's PASS/FAIL, and
+exits non-zero if any suite failed. `run-offline` can fail on upstream feed
+outages (pokemontcg.io is documented flaky) — re-run when the feed is healthy.
 
 **Gotcha:** extension IDs are the SHA-256 of the load path, and Chrome
 canonicalizes symlinks before hashing. On macOS `/tmp` is a symlink to
 `/private/tmp`, so extracting to `/tmp/...` makes Chrome's IDs differ from the
-harness's — every popup then resolves to an error page. Always extract to a
-symlink-free path (`.zip-e2e/` inside the project works).
+harness's — every popup then resolves to an error page. `zip-gate.sh` always
+extracts to `.zip-e2e/` inside the family root, which is symlink-free.
 
 ## Notes
 
