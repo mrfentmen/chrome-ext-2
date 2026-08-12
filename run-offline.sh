@@ -1,7 +1,7 @@
 #!/bin/bash
-# run-offline.sh — two-phase offline-fallback regression for the three
-# cache-backed extensions (hacker-news-reader, wiki-instant,
-# internet-radio-player).
+# run-offline.sh — two-phase offline-fallback regression for the five
+# offline-capable extensions (random-fact-generator, where-is-iss,
+# hacker-news-reader, wiki-instant, internet-radio-player).
 #
 # Phase 1: loads real data and persists each extension's cache into the
 # profile. Phase 2: fails every API request via CDP and proves the saved copy

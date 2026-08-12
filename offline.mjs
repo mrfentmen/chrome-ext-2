@@ -11,7 +11,9 @@
  *                    an "Offline — saved …" status and no uncaught
  *                    exceptions.
  *
- * Covers the three cache-backed extensions:
+ * Covers the five offline-capable extensions:
+ *   - random-fact-generator (kept last-good fact)
+ *   - where-is-iss          (last known fix, STALE badge)
  *   - hacker-news-reader    (last-good stories per tab)
  *   - wiki-instant          (last opened article)
  *   - internet-radio-player (last station list)

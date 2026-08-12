@@ -22,7 +22,7 @@ harness needs **Chrome for Testing** or Chromium. The runner auto-discovers it:
 | `./run4.sh` | Whiteboard: store screenshot regeneration (`ext/store/screenshot.png`) + header fits |
 | `./run5.sh` | Whiteboard zoom (50%/100%/Fit), exact size inputs, zoom-aware grip; editor grips on image-to-pdf + image-resize-compressor; zero console errors |
 | `./run6.sh` | Corner-drag grips on where-is-iss (map), hacker-news-reader (story list) and wiki-instant (article text): drag math, keyboard arrows, persistence, zero console errors |
-| `./run-offline.sh` | **Two-phase offline regression** for the 3 cache-backed extensions (HN stories, wiki article, radio stations): phase 1 loads real data + saves the cache, phase 2 fails every API request via CDP and proves the saved copy renders with an "Offline — saved …" status and zero uncaught exceptions |
+| `./run-offline.sh` | **Two-phase offline regression** for the 5 offline-capable extensions (fact generator kept fact, ISS last fix + STALE badge, HN stories, wiki article, radio stations): phase 1 loads real data + saves the cache, phase 2 fails every API request via CDP and proves the saved copy renders with an "Offline — saved …" status and zero uncaught exceptions |
 | `node smoke2.mjs` | Interaction flows (needs a browser already running with `--remote-debugging-port=9222`): new fact, PDF convert, ISS refresh, wiki search, resize estimate, undo, radio play, HN tabs |
 
 Each runner exits non-zero on failure, so it can be dropped into a pre-release
