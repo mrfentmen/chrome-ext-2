@@ -180,6 +180,12 @@ async function main() {
     res.consoleErrors = unique(res.consoleErrors);
     res.networkFailures = unique(res.networkFailures);
     res.warnings = unique(res.warnings).filter((w) => !/favicon/i.test(w));
+    if (name === 'internet-radio-player') {
+      // Known benign noise (documented in README): a station server can 402 or
+      // ORB-block its favicon; the popup falls back to a radio emoji.
+      res.consoleErrors = res.consoleErrors.filter((e) => !/Failed to load resource:.*(icon|favicon)/i.test(e));
+      res.networkFailures = res.networkFailures.filter((f) => !(/\[Image\]/.test(f) && /ERR_BLOCKED_BY_ORB/.test(f)));
+    }
     res.ok = res.consoleErrors.length === 0 && res.exceptions.length === 0 &&
       res.networkFailures.length === 0 && cfg.check(res.dom);
 

@@ -22,6 +22,7 @@ harness needs **Chrome for Testing** or Chromium. The runner auto-discovers it:
 | `./run4.sh` | Whiteboard: store screenshot regeneration (`ext/store/screenshot.png`) + header fits |
 | `./run5.sh` | Whiteboard zoom (50%/100%/Fit), exact size inputs, zoom-aware grip; editor grips on image-to-pdf + image-resize-compressor; zero console errors |
 | `./run6.sh` | Corner-drag grips on where-is-iss (map), hacker-news-reader (story list) and wiki-instant (article text): drag math, keyboard arrows, persistence, zero console errors |
+| `./run-offline.sh` | **Two-phase offline regression** for the 3 cache-backed extensions (HN stories, wiki article, radio stations): phase 1 loads real data + saves the cache, phase 2 fails every API request via CDP and proves the saved copy renders with an "Offline — saved …" status and zero uncaught exceptions |
 | `node smoke2.mjs` | Interaction flows (needs a browser already running with `--remote-debugging-port=9222`): new fact, PDF convert, ISS refresh, wiki search, resize estimate, undo, radio play, HN tabs |
 
 Each runner exits non-zero on failure, so it can be dropped into a pre-release
@@ -37,12 +38,14 @@ already falls back to a radio emoji and playback is unaffected.
 
 ## Files
 
-- `run-all.sh`, `run3.sh`, `run4.sh`, `run5.sh` — one-shot runners (launch
-  Chrome, run a test, report, clean up)
+- `run-all.sh`, `run3.sh`, `run4.sh`, `run5.sh`, `run-offline.sh` — one-shot
+  runners (launch Chrome, run a test, report, clean up)
 - `chrome-path.sh` — Chrome for Testing discovery (override with `CHROME=`)
 - `smoke.mjs` — load test + screenshots for all 8 extensions
 - `smoke2.mjs` — interaction flows
 - `smoke3.mjs` / `smoke5.mjs` — whiteboard + editor feature E2E
+- `offline.mjs` — two-phase offline-fallback regression (cache-backed
+  extensions)
 - `smoke4.mjs` — store screenshot regen
 - `gen-privacy.mjs` — regenerate the 8 privacy policy pages into
   `../privacy-policies` (the GitHub Pages repo checkout); commit + push to
@@ -64,6 +67,7 @@ cd "$BASE/smoke-harness"
 SMOKE_BASE="$BASE/.zip-e2e" ./run-all.sh   # full 8-extension suite against the zips
 SMOKE_BASE="$BASE/.zip-e2e" ./run5.sh      # whiteboard zoom + editor grips
 SMOKE_BASE="$BASE/.zip-e2e" ./run6.sh      # viewer-popup resize grips
+SMOKE_BASE="$BASE/.zip-e2e" ./run-offline.sh  # offline fallback against the zips
 ```
 
 **Gotcha:** extension IDs are the SHA-256 of the load path, and Chrome
