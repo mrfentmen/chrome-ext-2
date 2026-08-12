@@ -31,6 +31,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Per-extension test plan. `block` are Fetch urlPatterns for the API hosts;
 // `online` / `offline` describe each phase.
 const EXTS = {
+  'where-is-iss': {
+    block: ['*api.open-notify.org*'],
+    online: { waitMs: 4000, check: (d) => /°/.test(d.coord || ''), label: 'live fix renders' },
+    offline: {
+      waitMs: 8000, check: (d) => /°/.test(d.coord || '') && /Offline/.test(d.status) && d.liveLabel === 'STALE',
+      label: 'stale fix + Offline status + STALE badge',
+    },
+  },
   'hacker-news-reader': {
     block: ['*hacker-news.firebaseio.com*'],
     online: { waitMs: 6000, check: (d) => d.stories >= 15, label: 'story list renders' },
@@ -175,6 +183,17 @@ async function runSteps(cdp, sid, steps) {
 }
 
 function snapshotExpr(name) {
+  if (name === 'where-is-iss') {
+    return `(() => {
+      const s = document.querySelector('#status');
+      const l = document.querySelector('#live-label');
+      return {
+        coord: (document.querySelector('#coord') || {}).textContent || '',
+        status: s ? s.textContent.trim() : '',
+        liveLabel: l ? l.textContent.trim() : '',
+      };
+    })()`;
+  }
   if (name === 'hacker-news-reader') {
     return `(() => {
       const s = document.querySelector('#status');

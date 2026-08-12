@@ -17,7 +17,7 @@ sleep 1
 rm -rf /tmp/ext-smoke-profile
 
 EXTS=""
-for d in hacker-news-reader wiki-instant internet-radio-player; do
+for d in where-is-iss hacker-news-reader wiki-instant internet-radio-player; do
   EXTS="$EXTS,$BASE/$d/ext"
 done
 EXTS="${EXTS#,}"
