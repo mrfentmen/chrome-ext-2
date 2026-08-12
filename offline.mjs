@@ -18,6 +18,7 @@
  *   - wiki-instant          (last opened article)
  *   - internet-radio-player (last station list)
  *   - pokemon-price-ticker  (cached card quotes)
+ *   - yugioh-price-ticker   (cached card quotes + client price history)
  *
  * The Chrome profile must persist across the whole run (see run-offline.sh)
  * so the phase-1 cache is readable in phase 2. Exit 0 = all phases pass.
@@ -148,6 +149,54 @@ const EXTS = {
         { waitFor: `new Promise((res) => chrome.storage.local.get('ptWatchlist', (d) => {
             const w = d && d.ptWatchlist;
             res(Array.isArray(w) && w[0] && typeof w[0].updatedAt === 'string' && w[0].updatedAt.length > 0);
+          }))`, waitForMs: 20000, run: `(() => {
+            const r = document.querySelector('#refresh');
+            if (r) r.click();
+            return !!r;
+          })()` },
+      ],
+    },
+    offline: {
+      waitMs: 8000,
+      check: (d) => d.rows === 1 && /^\$/.test(d.price || '') && /Offline/.test(d.status) && d.staleClass === 'stale-fresh',
+      label: 'cached quote + Offline status + green staleness class',
+    },
+  },
+  'yugioh-price-ticker': {
+    block: ['*db.ygoprodeck.com*'],
+    online: {
+      waitMs: 8000,
+      check: (d) => d.rows === 1 && /^\$/.test(d.price || '') && d.histLanded === true,
+      label: 'card added with a landed quote (client price history written)',
+      steps: [
+        { after: 800, run: `(() => {
+            const s = document.querySelector('#search');
+            s.value = 'blue eyes white dragon';
+            s.dispatchEvent(new Event('input', { bubbles: true }));
+            return true;
+          })()` },
+        { waitFor: `document.querySelectorAll('.res-row').length > 0`, waitForMs: 12000, run: `(() => {
+            const r = document.querySelector('.res-row');
+            if (r) r.click();
+            return !!r;
+          })()` },
+        // second search attempt for flaky windows
+        { after: 400, run: `(() => {
+            const s = document.querySelector('#search');
+            s.value = 'blue eyes white dragon';
+            s.dispatchEvent(new Event('input', { bubbles: true }));
+            return true;
+          })()` },
+        { waitFor: `document.querySelectorAll('.res-row').length > 0`, waitForMs: 12000, run: `(() => {
+            const r = document.querySelector('.res-row');
+            if (r) r.click();
+            return !!r;
+          })()` },
+        // give the quote ladder one more full chance via Refresh (hist is
+        // only written by applyQuote, so it proves the quote really landed)
+        { waitFor: `new Promise((res) => chrome.storage.local.get('ygWatchlist', (d) => {
+            const w = d && d.ygWatchlist;
+            res(Array.isArray(w) && w[0] && Array.isArray(w[0].hist) && w[0].hist.length >= 1);
           }))`, waitForMs: 20000, run: `(() => {
             const r = document.querySelector('#refresh');
             if (r) r.click();
@@ -315,6 +364,22 @@ function snapshotExpr(name) {
         status: s ? s.textContent.trim() : '',
         staleClass: ${staleClass},
         quoteLanded: quote,
+      };
+    })()`;
+  }
+  if (name === 'yugioh-price-ticker') {
+    return `(async () => {
+      const s = document.querySelector('#status');
+      const hist = await new Promise((res) => chrome.storage.local.get('ygWatchlist', (d) => {
+        const w = d && d.ygWatchlist;
+        res(Array.isArray(w) && w[0] && Array.isArray(w[0].hist) && w[0].hist.length >= 1);
+      }));
+      return {
+        rows: document.querySelectorAll('.card-row').length,
+        price: (document.querySelector('.card-price') || { textContent: '' }).textContent,
+        status: s ? s.textContent.trim() : '',
+        staleClass: ${staleClass},
+        histLanded: hist,
       };
     })()`;
   }

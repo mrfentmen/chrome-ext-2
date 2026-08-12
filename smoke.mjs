@@ -24,6 +24,7 @@ const EXTS = {
   'internet-radio-player':   { check: (d) => true },
   'hacker-news-reader':      { check: (d) => (d.count || '').includes('stories') },
   'pokemon-price-ticker':    { check: (d) => true },
+  'yugioh-price-ticker':     { check: (d) => true },
 };
 
 function extId(absPath) {

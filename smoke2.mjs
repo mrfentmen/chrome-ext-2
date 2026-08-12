@@ -240,6 +240,44 @@ async function run() {
     await cdp.send('Target.closeTarget', { targetId: p.t.targetId });
   }
 
+  // ---- yugioh-price-ticker: search (hyphen fallback) -> add -> quote ----
+  {
+    const p = await openPopup('yugioh-price-ticker');
+    await sleep(2000);
+    let added = false;
+    for (let attempt = 0; attempt < 3 && !added; attempt++) {
+      await evalIn(cdp, p.sid, `(() => {
+        const s = document.querySelector('#search');
+        s.value = 'blue eyes white dragon';
+        s.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
+      })()`);
+      let saw = false;
+      for (let t0 = Date.now(); Date.now() - t0 < 12000 && !saw;) {
+        saw = await evalIn(cdp, p.sid, `document.querySelectorAll('.res-row').length > 0`) === true;
+        if (!saw) await sleep(500);
+      }
+      if (saw) {
+        await evalIn(cdp, p.sid, `(() => { const r = document.querySelector('.res-row'); if (r) r.click(); return !!r; })()`);
+        added = true;
+      }
+    }
+    let histLanded = false;
+    for (let t0 = Date.now(); Date.now() - t0 < 15000 && !histLanded;) {
+      histLanded = await evalIn(cdp, p.sid, `new Promise((res) => chrome.storage.local.get('ygWatchlist', (d) => {
+        const w = d && d.ygWatchlist;
+        res(Array.isArray(w) && w[0] && Array.isArray(w[0].hist) && w[0].hist.length >= 1);
+      }))`) === true;
+      if (!histLanded) await sleep(1000);
+    }
+    const rows = await evalIn(cdp, p.sid, `document.querySelectorAll('.card-row').length`);
+    const price = await evalIn(cdp, p.sid, `(() => { const p = document.querySelector('.card-price'); return p ? p.textContent : ''; })()`);
+    const tapeItems = await evalIn(cdp, p.sid, `document.querySelectorAll('.tape-item').length`);
+    results['yugioh-price-ticker'] = { added, rows, price, tapeItems, histLanded,
+      ok: rows === 1 && price.startsWith('$') && histLanded && tapeItems >= 2 };
+    await cdp.send('Target.closeTarget', { targetId: p.t.targetId });
+  }
+
   console.log(JSON.stringify(results, null, 2));
   const allOk = Object.values(results).every((r) => r.ok);
   console.log('\n=== OVERALL:', allOk ? 'ALL FLOWS PASS' : 'FLOWS FAILED', '===');

@@ -12,7 +12,7 @@ sleep 1
 rm -rf /tmp/ext-smoke-profile
 
 EXTS=""
-for d in random-fact-generator image-to-pdf where-is-iss wiki-instant image-resize-compressor whiteboard internet-radio-player hacker-news-reader pokemon-price-ticker; do
+for d in random-fact-generator image-to-pdf where-is-iss wiki-instant image-resize-compressor whiteboard internet-radio-player hacker-news-reader pokemon-price-ticker yugioh-price-ticker; do
   EXTS="$EXTS,$BASE/$d/ext"
 done
 EXTS="${EXTS#,}"
