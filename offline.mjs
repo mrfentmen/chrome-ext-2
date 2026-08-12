@@ -37,24 +37,24 @@ const EXTS = {
     block: ['*uselessfacts.jsph.pl*'],
     online: { waitMs: 4000, check: (d) => d.fact.length > 5 && !/Oops/.test(d.fact) && !/Loading/.test(d.fact), label: 'fact renders' },
     offline: {
-      waitMs: 8000, check: (d) => d.fact.length > 5 && /Offline/.test(d.status),
-      label: 'kept fact + Offline status',
+      waitMs: 8000, check: (d) => d.fact.length > 5 && /Offline/.test(d.status) && d.staleClass === 'stale-fresh',
+      label: 'kept fact + Offline status + green staleness class',
     },
   },
   'where-is-iss': {
     block: ['*api.open-notify.org*'],
     online: { waitMs: 4000, check: (d) => /°/.test(d.coord || ''), label: 'live fix renders' },
     offline: {
-      waitMs: 8000, check: (d) => /°/.test(d.coord || '') && /Offline/.test(d.status) && d.liveLabel === 'STALE',
-      label: 'stale fix + Offline status + STALE badge',
+      waitMs: 8000, check: (d) => /°/.test(d.coord || '') && /Offline/.test(d.status) && d.liveLabel === 'STALE' && d.staleClass === 'stale-fresh',
+      label: 'stale fix + Offline status + STALE badge + green staleness class',
     },
   },
   'hacker-news-reader': {
     block: ['*hacker-news.firebaseio.com*'],
     online: { waitMs: 6000, check: (d) => d.stories >= 15, label: 'story list renders' },
     offline: {
-      waitMs: 8000, check: (d) => d.stories >= 15 && /Offline/.test(d.status),
-      label: 'cached stories + Offline status',
+      waitMs: 8000, check: (d) => d.stories >= 15 && /Offline/.test(d.status) && d.staleClass === 'stale-fresh',
+      label: 'cached stories + Offline status + green staleness class',
     },
   },
   'wiki-instant': {
@@ -76,8 +76,8 @@ const EXTS = {
       ],
     },
     offline: {
-      waitMs: 5000, check: (d) => !!d.title && d.extract >= 50 && /Offline/.test(d.status),
-      label: 'cached card + Offline status',
+      waitMs: 5000, check: (d) => !!d.title && d.extract >= 50 && /Offline/.test(d.status) && d.staleClass === 'stale-fresh',
+      label: 'cached card + Offline status + green staleness class',
       steps: [
         { after: 800, run: `(() => {
             const s = document.querySelector('#search');
@@ -92,8 +92,8 @@ const EXTS = {
     block: ['*radio-browser.info*'],
     online: { waitMs: 5000, check: (d) => d.stations >= 10, label: 'station list renders' },
     offline: {
-      waitMs: 8000, check: (d) => d.stations >= 10 && /Offline/.test(d.status),
-      label: 'cached stations + Offline status',
+      waitMs: 8000, check: (d) => d.stations >= 10 && /Offline/.test(d.status) && d.staleClass === 'stale-fresh',
+      label: 'cached stations + Offline status + green staleness class',
     },
   },
 };
@@ -193,12 +193,16 @@ async function runSteps(cdp, sid, steps) {
 }
 
 function snapshotExpr(name) {
+  // The offline phase caches "just now", so the status must carry the green
+  // staleness class — proves the color-coding is applied, not just the text.
+  const staleClass = `s && s.classList.contains('stale-fresh') ? 'stale-fresh' : ''`;
   if (name === 'random-fact-generator') {
     return `(() => {
       const s = document.querySelector('#status');
       return {
         fact: (document.querySelector('#fact-text') || {}).textContent || '',
         status: s ? s.textContent.trim() : '',
+        staleClass: ${staleClass},
       };
     })()`;
   }
@@ -210,13 +214,14 @@ function snapshotExpr(name) {
         coord: (document.querySelector('#coord') || {}).textContent || '',
         status: s ? s.textContent.trim() : '',
         liveLabel: l ? l.textContent.trim() : '',
+        staleClass: ${staleClass},
       };
     })()`;
   }
   if (name === 'hacker-news-reader') {
     return `(() => {
       const s = document.querySelector('#status');
-      return { stories: document.querySelectorAll('.story').length, status: s ? s.textContent.trim() : '' };
+      return { stories: document.querySelectorAll('.story').length, status: s ? s.textContent.trim() : '', staleClass: ${staleClass} };
     })()`;
   }
   if (name === 'wiki-instant') {
@@ -228,12 +233,13 @@ function snapshotExpr(name) {
         title: t ? t.textContent.trim() : '',
         extract: e ? e.textContent.trim().length : 0,
         status: s ? s.textContent.trim() : '',
+        staleClass: ${staleClass},
       };
     })()`;
   }
   return `(() => {
     const s = document.querySelector('#status');
-    return { stations: document.querySelectorAll('.station').length, status: s ? s.textContent.trim() : '' };
+    return { stations: document.querySelectorAll('.station').length, status: s ? s.textContent.trim() : '', staleClass: ${staleClass} };
   })()`;
 }
 
