@@ -278,6 +278,38 @@ async function run() {
     await cdp.send('Target.closeTarget', { targetId: p.t.targetId });
   }
 
+  // ---- sports-card-ticker: token setup -> test -> save -> ticker view ----
+  // Token-gated: with no stored token the setup screen must appear; a fake
+  // token must produce a completed verdict from the real eBay request path
+  // (401 rejection or unreachable — never a JS error); Save flips to the
+  // ticker view with the search box.
+  {
+    const p = await openPopup('sports-card-ticker');
+    await sleep(2500);
+    const setupVisible = await evalIn(cdp, p.sid, `!document.getElementById('setupView').hidden && document.getElementById('mainView').hidden`) === true;
+    await evalIn(cdp, p.sid, `(() => {
+      const el = document.getElementById('token');
+      el.value = 'test-token-123';
+      document.getElementById('test-token').click();
+      return true;
+    })()`);
+    let tokenStatus = '';
+    // worst case the probe ladder is 2 x 8s + backoff; poll comfortably past it
+    for (let t0 = Date.now(); Date.now() - t0 < 35000;) {
+      tokenStatus = await evalIn(cdp, p.sid, `(document.getElementById('token-status') || {}).textContent || ''`);
+      if (tokenStatus && !/^Checking with eBay/.test(tokenStatus)) break;
+      await sleep(1000);
+    }
+    await evalIn(cdp, p.sid, `document.getElementById('save-token').click(); true`);
+    await sleep(1200);
+    const mainVisible = await evalIn(cdp, p.sid, `!document.getElementById('mainView').hidden && document.getElementById('setupView').hidden`) === true;
+    const searchPresent = await evalIn(cdp, p.sid, `!!document.querySelector('#search')`) === true;
+    results['sports-card-ticker'] = { setupVisible, tokenStatus, mainVisible, searchPresent,
+      ok: setupVisible === true && !!tokenStatus && !/^Checking with eBay/.test(tokenStatus) &&
+          mainVisible === true && searchPresent === true };
+    await cdp.send('Target.closeTarget', { targetId: p.t.targetId });
+  }
+
   console.log(JSON.stringify(results, null, 2));
   const allOk = Object.values(results).every((r) => r.ok);
   console.log('\n=== OVERALL:', allOk ? 'ALL FLOWS PASS' : 'FLOWS FAILED', '===');

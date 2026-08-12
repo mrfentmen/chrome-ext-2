@@ -22,13 +22,13 @@ harness needs **Chrome for Testing** or Chromium. The runner auto-discovers it:
 
 | Command | What it verifies |
 |---|---|
-| `./run-all.sh` | **The big one** — all 9 extensions load clean (zero console/net errors) + key DOM state; saves screenshots |
+| `./run-all.sh` | **The big one** — all 11 extensions load clean (zero console/net errors) + key DOM state; saves screenshots |
 | `./run3.sh` | Whiteboard: corner-drag resize, New tab button, tab auto-fit, persistence |
 | `./run4.sh` | Whiteboard: store screenshot regeneration (`ext/store/screenshot.png`) + header fits |
 | `./run5.sh` | Whiteboard zoom (50%/100%/Fit), exact size inputs, zoom-aware grip; editor grips on image-to-pdf + image-resize-compressor; zero console errors |
 | `./run6.sh` | Corner-drag grips on where-is-iss (map), hacker-news-reader (story list) and wiki-instant (article text): drag math, keyboard arrows, persistence, zero console errors |
-| `./run-offline.sh` | **Two-phase offline regression** for the 6 offline-capable extensions (fact generator kept fact, ISS last fix + STALE badge, HN stories, wiki article, radio stations, PokéTicker cached card quotes): phase 1 loads real data + saves the cache, phase 2 fails every API request via CDP and proves the saved copy renders with an "Offline — saved …" status and zero uncaught exceptions |
-| `./run2.sh` | Interaction flows across all 9 popups: new fact, PDF convert, ISS refresh, wiki search, resize estimate, undo, radio play, HN tabs, PokéTicker search→add→quote |
+| `./run-offline.sh` | **Two-phase offline regression** for the 7 offline-capable extensions (fact generator kept fact, ISS last fix + STALE badge, HN stories, wiki article, radio stations, PokéTicker + DuelTicker cached card quotes): phase 1 loads real data + saves the cache, phase 2 fails every API request via CDP and proves the saved copy renders with an "Offline — saved …" status and zero uncaught exceptions |
+| `./run2.sh` | Interaction flows across all 11 popups: new fact, PDF convert, ISS refresh, wiki search, resize estimate, undo, radio play, HN tabs, PokéTicker + DuelTicker search→add→quote, SportsTicker token setup→test→save (token-gated: a fake token must produce a completed verdict from the real eBay request path) |
 
 Each runner exits non-zero on failure, so it can be dropped into a pre-release
 script.
@@ -55,7 +55,7 @@ independent feeds and are unaffected.
   `run-offline.sh` — one-shot runners (launch headless Chrome, run a test,
   report, clean up)
 - `chrome-path.sh` — Chrome for Testing discovery (override with `CHROME=`)
-- `smoke.mjs` — load test + screenshots for all 9 extensions
+- `smoke.mjs` — load test + screenshots for all 11 extensions
 - `smoke2.mjs` — interaction flows
 - `smoke3.mjs` / `smoke5.mjs` — whiteboard + editor feature E2E
 - `offline.mjs` — two-phase offline-fallback regression (cache-backed
@@ -74,12 +74,12 @@ BASE='/Users/del/Desktop/REALESED EXT'
 mkdir -p "$BASE/.zip-e2e"
 for d in random-fact-generator image-to-pdf where-is-iss wiki-instant \
          image-resize-compressor whiteboard internet-radio-player hacker-news-reader \
-         pokemon-price-ticker; do
+         pokemon-price-ticker yugioh-price-ticker sports-card-ticker; do
   mkdir -p "$BASE/.zip-e2e/$d/ext"
   unzip -qo "$BASE/$d/upload.zip" -d "$BASE/.zip-e2e/$d/ext"
 done
 cd "$BASE/smoke-harness"
-SMOKE_BASE="$BASE/.zip-e2e" ./run-all.sh   # full 9-extension suite against the zips
+SMOKE_BASE="$BASE/.zip-e2e" ./run-all.sh   # full 11-extension suite against the zips
 SMOKE_BASE="$BASE/.zip-e2e" ./run5.sh      # whiteboard zoom + editor grips
 SMOKE_BASE="$BASE/.zip-e2e" ./run6.sh      # viewer-popup resize grips
 SMOKE_BASE="$BASE/.zip-e2e" ./run-offline.sh  # offline fallback against the zips

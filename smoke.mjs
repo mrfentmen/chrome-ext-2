@@ -25,6 +25,7 @@ const EXTS = {
   'hacker-news-reader':      { check: (d) => (d.count || '').includes('stories') },
   'pokemon-price-ticker':    { check: (d) => true },
   'yugioh-price-ticker':     { check: (d) => true },
+  'sports-card-ticker':      { check: (d) => true },  // token-gated: setup screen renders without a token
 };
 
 function extId(absPath) {
