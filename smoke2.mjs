@@ -176,19 +176,24 @@ async function run() {
     await cdp.send('Target.closeTarget', { targetId: p.t.targetId });
   }
 
-  // ---- hacker-news-reader: switch to Ask tab ----
+  // ---- hacker-news-reader: switch through the Ask, New, and Best tabs ----
   {
     const p = await openPopup('hacker-news-reader');
     await sleep(4000);
     const topCount = await evalIn(cdp, p.sid, `document.querySelectorAll('.story').length`);
-    await evalIn(cdp, p.sid, `(() => {
-      const ask = document.querySelector('.tab[data-tab="ask"]');
-      if (ask) ask.click();
-      return !!ask;
-    })()`);
-    await sleep(3500);
-    const askCount = await evalIn(cdp, p.sid, `document.querySelectorAll('.story').length`);
-    results['hacker-news-reader'] = { topCount, askCount, ok: topCount > 0 && askCount > 0 };
+    async function clickTab(tab) {
+      await evalIn(cdp, p.sid, `(() => {
+        const t = document.querySelector('.tab[data-tab="${tab}"]');
+        if (t) t.click();
+        return !!t;
+      })()`);
+      await sleep(3500);
+      return evalIn(cdp, p.sid, `document.querySelectorAll('.story').length`);
+    }
+    const askCount = await clickTab('ask');
+    const newCount = await clickTab('new');
+    const bestCount = await clickTab('best');
+    results['hacker-news-reader'] = { topCount, askCount, newCount, bestCount, ok: topCount > 0 && askCount > 0 && newCount > 0 && bestCount > 0 };
     await cdp.send('Target.closeTarget', { targetId: p.t.targetId });
   }
 
