@@ -1,8 +1,8 @@
 #!/bin/bash
-# run-all.sh — launch Chrome for Testing with all 9 extensions and run the
-# CDP smoke test (smoke.mjs) in one process. Screenshots land in ./shots.
-HARNESS="$(cd "$(dirname "$0")" && pwd)"
-BASE="${SMOKE_BASE:-$(cd "$HARNESS/.." && pwd)}"  # SMOKE_BASE overrides the extension root (e.g. a zip-extraction dir)
+# One-shot smoke2 run: launch Chrome for Testing with all 9 extensions (live
+# ext folders = freshly pushed build), run the interaction-flow suite, clean up.
+HARNESS="/Users/del/Desktop/REALESED EXT/smoke-harness"
+BASE="${SMOKE_BASE:-/Users/del/Desktop/REALESED EXT}"
 source "$HARNESS/chrome-path.sh"
 trap 'pkill -f "ext-smoke-profile" 2>/dev/null' EXIT
 CHROME="$(find_chrome)" || { echo "$FIND_CHROME_HINT"; exit 1; }
@@ -27,8 +27,8 @@ EXTS="${EXTS#,}"
   about:blank >"$HARNESS/chrome.log" 2>&1 &
 
 sleep 5
-curl -s http://localhost:9222/json/version >/dev/null && echo "CDP up" || { echo "CDP FAILED"; cat "$HARNESS/chrome.log" | head; exit 1; }
-node "$HARNESS/smoke.mjs"
+curl -s http://localhost:9222/json/version >/dev/null && echo "CDP up" || { echo "CDP FAILED"; head -20 "$HARNESS/chrome.log"; exit 1; }
+node "$HARNESS/smoke2.mjs"
 RC=$?
 pkill -f "ext-smoke-profile" 2>/dev/null
 exit $RC

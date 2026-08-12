@@ -201,18 +201,23 @@ async function run() {
   {
     const p = await openPopup('pokemon-price-ticker');
     await sleep(2000);
-    // two search attempts: the pokemontcg.io feed can flap for a minute
+    // three search attempts with result polling: the pokemontcg.io feed can
+    // flap for a minute, and the extension's own retry ladder takes a few
+    // seconds per attempt — poll instead of assuming a fixed timing.
     let added = false;
-    for (let attempt = 0; attempt < 2 && !added; attempt++) {
+    for (let attempt = 0; attempt < 3 && !added; attempt++) {
       await evalIn(cdp, p.sid, `(() => {
         const s = document.querySelector('#search');
         s.value = 'charizard';
         s.dispatchEvent(new Event('input', { bubbles: true }));
         return true;
       })()`);
-      await sleep(6000);
-      const resCount = await evalIn(cdp, p.sid, `document.querySelectorAll('.res-row').length`);
-      if (resCount > 0) {
+      let saw = false;
+      for (let t0 = Date.now(); Date.now() - t0 < 12000 && !saw;) {
+        saw = await evalIn(cdp, p.sid, `document.querySelectorAll('.res-row').length > 0`) === true;
+        if (!saw) await sleep(500);
+      }
+      if (saw) {
         await evalIn(cdp, p.sid, `(() => { const r = document.querySelector('.res-row'); if (r) r.click(); return !!r; })()`);
         added = true;
       }

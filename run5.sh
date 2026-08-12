@@ -4,6 +4,7 @@
 HARNESS="$(cd "$(dirname "$0")" && pwd)"
 BASE="${SMOKE_BASE:-$(cd "$HARNESS/.." && pwd)}"
 source "$HARNESS/chrome-path.sh"
+trap 'pkill -f "ext-smoke-profile" 2>/dev/null' EXIT
 CHROME="$(find_chrome)" || { echo "$FIND_CHROME_HINT"; exit 1; }
 
 pkill -f "ext-smoke-profile" 2>/dev/null

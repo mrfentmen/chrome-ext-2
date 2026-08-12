@@ -11,6 +11,7 @@
 HARNESS="$(cd "$(dirname "$0")" && pwd)"
 BASE="${SMOKE_BASE:-$(cd "$HARNESS/.." && pwd)}"  # SMOKE_BASE overrides the extension root (e.g. a zip-extraction dir)
 source "$HARNESS/chrome-path.sh"
+trap 'pkill -f "ext-smoke-profile" 2>/dev/null' EXIT
 CHROME="$(find_chrome)" || { echo "$FIND_CHROME_HINT"; exit 1; }
 
 pkill -f "ext-smoke-profile" 2>/dev/null
@@ -27,7 +28,7 @@ EXTS="${EXTS#,}"
   --user-data-dir=/tmp/ext-smoke-profile \
   --disable-extensions-except="$EXTS" \
   --load-extension="$EXTS" \
-  --remote-debugging-port=9222 \
+  --headless=new --disable-session-crashed-bubble --remote-debugging-port=9222 \
   --no-first-run --no-default-browser-check \
   --window-size=1200,800 \
   about:blank >"$HARNESS/chrome-offline.log" 2>&1 &
