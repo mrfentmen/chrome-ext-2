@@ -219,9 +219,11 @@ async function run() {
     }
     let quoteLanded = false;
     for (let t0 = Date.now(); Date.now() - t0 < 15000 && !quoteLanded;) {
+      // ts is seeded at add time; a landed quote is proven by the TCGplayer
+      // updatedAt string that only applyQuote writes.
       quoteLanded = await evalIn(cdp, p.sid, `new Promise((res) => chrome.storage.local.get('ptWatchlist', (d) => {
         const w = d && d.ptWatchlist;
-        res(Array.isArray(w) && w[0] && typeof w[0].ts === 'number');
+        res(Array.isArray(w) && w[0] && typeof w[0].updatedAt === 'string' && w[0].updatedAt.length > 0);
       }))`) === true;
       if (!quoteLanded) await sleep(1000);
     }

@@ -143,9 +143,11 @@ const EXTS = {
           })()` },
         // Give the quote one more full chance: if it hasn't landed yet, click
         // Refresh (re-fires the quote fetches with their own 3-try ladder).
+        // ts is seeded at add time, so a landed quote is proven by the
+        // TCGplayer updatedAt string that only applyQuote writes.
         { waitFor: `new Promise((res) => chrome.storage.local.get('ptWatchlist', (d) => {
             const w = d && d.ptWatchlist;
-            res(Array.isArray(w) && w[0] && typeof w[0].ts === 'number');
+            res(Array.isArray(w) && w[0] && typeof w[0].updatedAt === 'string' && w[0].updatedAt.length > 0);
           }))`, waitForMs: 20000, run: `(() => {
             const r = document.querySelector('#refresh');
             if (r) r.click();
@@ -305,7 +307,7 @@ function snapshotExpr(name) {
       const s = document.querySelector('#status');
       const quote = await new Promise((res) => chrome.storage.local.get('ptWatchlist', (d) => {
         const w = d && d.ptWatchlist;
-        res(Array.isArray(w) && w[0] && typeof w[0].ts === 'number');
+        res(Array.isArray(w) && w[0] && typeof w[0].updatedAt === 'string' && w[0].updatedAt.length > 0);
       }));
       return {
         rows: document.querySelectorAll('.card-row').length,

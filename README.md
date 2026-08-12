@@ -17,12 +17,12 @@ harness needs **Chrome for Testing** or Chromium. The runner auto-discovers it:
 
 | Command | What it verifies |
 |---|---|
-| `./run-all.sh` | **The big one** — all 8 extensions load clean (zero console/net errors) + key DOM state; saves screenshots |
+| `./run-all.sh` | **The big one** — all 9 extensions load clean (zero console/net errors) + key DOM state; saves screenshots |
 | `./run3.sh` | Whiteboard: corner-drag resize, New tab button, tab auto-fit, persistence |
 | `./run4.sh` | Whiteboard: store screenshot regeneration (`ext/store/screenshot.png`) + header fits |
 | `./run5.sh` | Whiteboard zoom (50%/100%/Fit), exact size inputs, zoom-aware grip; editor grips on image-to-pdf + image-resize-compressor; zero console errors |
 | `./run6.sh` | Corner-drag grips on where-is-iss (map), hacker-news-reader (story list) and wiki-instant (article text): drag math, keyboard arrows, persistence, zero console errors |
-| `./run-offline.sh` | **Two-phase offline regression** for the 5 offline-capable extensions (fact generator kept fact, ISS last fix + STALE badge, HN stories, wiki article, radio stations): phase 1 loads real data + saves the cache, phase 2 fails every API request via CDP and proves the saved copy renders with an "Offline — saved …" status and zero uncaught exceptions |
+| `./run-offline.sh` | **Two-phase offline regression** for the 6 offline-capable extensions (fact generator kept fact, ISS last fix + STALE badge, HN stories, wiki article, radio stations, PokéTicker cached card quotes): phase 1 loads real data + saves the cache, phase 2 fails every API request via CDP and proves the saved copy renders with an "Offline — saved …" status and zero uncaught exceptions |
 | `node smoke2.mjs` | Interaction flows (needs a browser already running with `--remote-debugging-port=9222`): new fact, PDF convert, ISS refresh, wiki search, resize estimate, undo, radio play, HN tabs |
 
 Each runner exits non-zero on failure, so it can be dropped into a pre-release
@@ -36,12 +36,20 @@ missing. Known benign noise: internet-radio-player's station **favicons** — a
 station server returning 402/blocked by ORB logs one console error; the code
 already falls back to a radio emoji and playback is unaffected.
 
+**pokemontcg.io flakiness:** the PokéTicker offline phase needs live data to
+cache, and the Pokemon TCG API has had multi-minute outages (intermittent
+500/502 on all endpoints, confirmed via curl). During one, the PokéTicker
+phase fails — the extension degrades exactly as designed (3-try retry ladder,
+honest feed-down messages, cached quotes when any exist), and the phase goes
+green again once the feed is healthy. The other five offline phases use
+independent feeds and are unaffected.
+
 ## Files
 
 - `run-all.sh`, `run3.sh`, `run4.sh`, `run5.sh`, `run-offline.sh` — one-shot
   runners (launch Chrome, run a test, report, clean up)
 - `chrome-path.sh` — Chrome for Testing discovery (override with `CHROME=`)
-- `smoke.mjs` — load test + screenshots for all 8 extensions
+- `smoke.mjs` — load test + screenshots for all 9 extensions
 - `smoke2.mjs` — interaction flows
 - `smoke3.mjs` / `smoke5.mjs` — whiteboard + editor feature E2E
 - `offline.mjs` — two-phase offline-fallback regression (cache-backed
@@ -59,12 +67,13 @@ Point the harness at freshly extracted zips instead of the live `ext/` folders:
 BASE='/Users/del/Desktop/REALESED EXT'
 mkdir -p "$BASE/.zip-e2e"
 for d in random-fact-generator image-to-pdf where-is-iss wiki-instant \
-         image-resize-compressor whiteboard internet-radio-player hacker-news-reader; do
+         image-resize-compressor whiteboard internet-radio-player hacker-news-reader \
+         pokemon-price-ticker; do
   mkdir -p "$BASE/.zip-e2e/$d/ext"
   unzip -qo "$BASE/$d/upload.zip" -d "$BASE/.zip-e2e/$d/ext"
 done
 cd "$BASE/smoke-harness"
-SMOKE_BASE="$BASE/.zip-e2e" ./run-all.sh   # full 8-extension suite against the zips
+SMOKE_BASE="$BASE/.zip-e2e" ./run-all.sh   # full 9-extension suite against the zips
 SMOKE_BASE="$BASE/.zip-e2e" ./run5.sh      # whiteboard zoom + editor grips
 SMOKE_BASE="$BASE/.zip-e2e" ./run6.sh      # viewer-popup resize grips
 SMOKE_BASE="$BASE/.zip-e2e" ./run-offline.sh  # offline fallback against the zips
