@@ -29,7 +29,8 @@ harness needs **Chrome for Testing** or Chromium. The runner auto-discovers it:
 | `./run6.sh` | Corner-drag grips on where-is-iss (map), hacker-news-reader (story list) and wiki-instant (article text): drag math, keyboard arrows, persistence, zero console errors |
 | `./run-offline.sh` | **Two-phase offline regression** for the 7 offline-capable extensions (fact generator kept fact, ISS last fix + STALE badge, HN stories, wiki article, radio stations, PokéTicker + DuelTicker cached card quotes): phase 1 loads real data + saves the cache, phase 2 fails every API request via CDP and proves the saved copy renders with an "Offline — saved …" status and zero uncaught exceptions |
 | `./run2.sh` | Interaction flows across all 11 popups: new fact, PDF convert, ISS refresh, wiki search, resize estimate, undo, radio play, HN tabs, PokéTicker + DuelTicker search→add→quote, SportsTicker token setup→test→save (token-gated: a fake token must produce a completed verdict from the real eBay request path) |
-| `./zip-gate.sh` | **One-command pre-upload gate** — extracts every `upload.zip` into `.zip-e2e/` and runs run-all + run5 + run6 + run-offline against the extracted files (`--run2` adds the interaction flows) |
+| `./zip-gate.sh` | **One-command pre-upload gate** — extracts every `upload.zip` into `.zip-e2e/` and runs audit + run-all + run5 + run6 + run-offline against the extracted files (`--run2` adds the interaction flows) |
+| `./audit.sh` | Static pre-submission checklist: manifest validity, zip integrity, screenshot dims, store description presence — all 11 extensions |
 
 Each runner exits non-zero on failure, so it can be dropped into a pre-release
 script.
@@ -52,11 +53,13 @@ independent feeds and are unaffected.
 
 ## Files
 
+- `audit.sh` — static pre-submission checklist (manifest/zip/screenshot/docs)
 - `run-all.sh`, `run2.sh`, `run3.sh`, `run4.sh`, `run5.sh`, `run6.sh`,
   `run-offline.sh` — one-shot runners (launch headless Chrome, run a test,
   report, clean up)
 - `zip-gate.sh` — one-command pre-upload gate: extracts every `upload.zip`
   into `.zip-e2e/` and runs the suites against the extracted files
+- `audit.py` — the audit engine (manifest/zip/icons/screenshot/docs checks for all 11 extensions; respects SMOKE_BASE for zip-gate)
 - `chrome-path.sh` — Chrome for Testing discovery (override with `CHROME=`)
 - `smoke.mjs` — load test + screenshots for all 11 extensions
 - `smoke2.mjs` — interaction flows
@@ -75,7 +78,7 @@ the whole gate against the **extracted files** — not the live `ext/` folders �
 so what gets tested is exactly what gets uploaded:
 
 ```bash
-./zip-gate.sh                # full gate: run-all + run5 + run6 + run-offline
+./zip-gate.sh                # full gate: audit + run-all + run5 + run6 + run-offline
 ./zip-gate.sh --run2         # + the 11 interaction flows
 ./zip-gate.sh run5 run6      # just the named suites
 ./zip-gate.sh --reload       # re-run against the existing .zip-e2e/ (no re-extract)

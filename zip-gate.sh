@@ -48,13 +48,13 @@ for arg in "$@"; do
     --reload)  RELOAD=1 ;;
     --run2)    RUN2=1 ;;
     --*)       echo "zip-gate: unknown flag '$arg' (try --help)" >&2; exit 2 ;;
-    run-all|run2|run3|run4|run5|run6|run-offline) GATES+=("$arg") ;;
+    audit|run-all|run2|run3|run4|run5|run6|run-offline) GATES+=("$arg") ;;
     *)         echo "zip-gate: unknown suite '$arg' (try --help)" >&2; exit 2 ;;
   esac
 done
 
 if [ "${#GATES[@]}" -eq 0 ]; then
-  GATES=(run-all run5 run6 run-offline)
+  GATES=(audit run-all run5 run6 run-offline)
 fi
 if [ "$RUN2" = 1 ] && [[ ! " ${GATES[*]} " =~ " run2 " ]]; then
   GATES+=(run2)
