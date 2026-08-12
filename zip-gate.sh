@@ -12,7 +12,9 @@
 #   ./run-offline.sh  two-phase offline fallback (7 offline-capable)
 #
 # Usage:
-#   ./zip-gate.sh               full gate: extract zips, then the 4 suites
+#   ./zip-gate.sh               full gate: extract zips, then the 5 suites
+#   ./zip-gate.sh --ci          CI mode: structured JSON (one line), all
+#                               human output suppressed
 #   ./zip-gate.sh --reload      skip extraction; re-run suites against the
 #                               existing .zip-e2e/ (fast iteration)
 #   ./zip-gate.sh --run2        also run the 11 interaction flows (run2.sh)
@@ -38,6 +40,7 @@ EXTS=(random-fact-generator image-to-pdf where-is-iss wiki-instant
 
 RELOAD=0
 RUN2=0
+CI=0
 GATES=()
 
 usage() { sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; }
@@ -47,6 +50,7 @@ for arg in "$@"; do
     --help|-h) usage; exit 0 ;;
     --reload)  RELOAD=1 ;;
     --run2)    RUN2=1 ;;
+    --ci)      CI=1 ;;
     --*)       echo "zip-gate: unknown flag '$arg' (try --help)" >&2; exit 2 ;;
     audit|run-all|run2|run3|run4|run5|run6|run-offline) GATES+=("$arg") ;;
     *)         echo "zip-gate: unknown suite '$arg' (try --help)" >&2; exit 2 ;;
@@ -62,7 +66,7 @@ fi
 
 # ---------- extract (or reuse) the zips ----------
 if [ "$RELOAD" = 1 ]; then
-  echo "zip-gate: --reload — reusing $EXTRACT"
+  [ "$CI" = 0 ] && echo "zip-gate: --reload — reusing $EXTRACT"
 else
   rm -rf "$EXTRACT"
   missing=0
@@ -77,7 +81,7 @@ else
     unzip -qo "$z" -d "$EXTRACT/$d/ext"
   done
   [ "$missing" = 1 ] && { echo "zip-gate: build the missing upload.zips first." >&2; exit 1; }
-  echo "zip-gate: extracted ${#EXTS[@]} upload.zips -> $EXTRACT"
+  [ "$CI" = 0 ] && echo "zip-gate: extracted ${#EXTS[@]} upload.zips -> $EXTRACT"
 fi
 
 # sanity: every suite dir must exist in the extraction
@@ -90,29 +94,44 @@ done
 
 source "$HARNESS/chrome-path.sh"
 CHROME="$(find_chrome)" || { echo "$FIND_CHROME_HINT"; exit 2; }
-echo "zip-gate: chrome = $CHROME"
-echo "zip-gate: suites = ${GATES[*]}"
+[ "$CI" = 0 ] && echo "zip-gate: chrome = $CHROME"
+[ "$CI" = 0 ] && echo "zip-gate: suites = ${GATES[*]}"
 
 # ---------- run the suites against the extracted zips ----------
-fails=0
+fails=()
 for gate in "${GATES[@]}"; do
-  echo
-  echo "========== zip-gate: $gate (against $EXTRACT) =========="
-  SMOKE_BASE="$EXTRACT" bash "$HARNESS/$gate.sh"
-  rc=$?
-  if [ "$rc" -eq 0 ]; then
-    echo "zip-gate: $gate PASS"
+  if [ "$CI" = 0 ]; then
+    echo
+    echo "========== zip-gate: $gate (against $EXTRACT) =========="
+    SMOKE_BASE="$EXTRACT" bash "$HARNESS/$gate.sh"
+    rc=$?
+    if [ "$rc" -eq 0 ]; then
+      echo "zip-gate: $gate PASS"
+    else
+      echo "zip-gate: $gate FAIL (exit $rc)" >&2
+      fails+=("$gate")
+    fi
   else
-    echo "zip-gate: $gate FAIL (exit $rc)" >&2
-    fails=$((fails + 1))
+    SMOKE_BASE="$EXTRACT" bash "$HARNESS/$gate.sh" >/dev/null 2>&1
+    rc=$?
+    ok=false; [ "$rc" -eq 0 ] && ok=true
+    fails_json="${fails_json}${fails_json:+,}{\"name\":\"$gate\",\"ok\":$ok,\"exit\":$rc}"
+    [ "$rc" -ne 0 ] && fails+=("$gate")
   fi
 done
 
+nfailed=${#fails[@]}
+if [ "$CI" = 1 ]; then
+  overall=false; [ "$nfailed" -eq 0 ] && overall=true
+  echo "{\"suites\":[$fails_json],\"overall\":$overall}"
+  exit $nfailed
+fi
+
 echo
-if [ "$fails" -eq 0 ]; then
+if [ "$nfailed" -eq 0 ]; then
   echo "=== zip-gate OVERALL: ALL ${#GATES[@]} SUITES PASS ==="
   exit 0
 fi
-echo "=== zip-gate OVERALL: $fails/${#GATES[@]} SUITES FAILED ===" >&2
+echo "=== zip-gate OVERALL: $nfailed/${#GATES[@]} SUITES FAILED ===" >&2
 echo "(note: run-offline can fail on upstream feed outages — re-run when healthy)" >&2
 exit 1
