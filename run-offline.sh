@@ -1,7 +1,8 @@
 #!/bin/bash
-# run-offline.sh — two-phase offline-fallback regression for the five
+# run-offline.sh — two-phase offline-fallback regression for the six
 # offline-capable extensions (random-fact-generator, where-is-iss,
-# hacker-news-reader, wiki-instant, internet-radio-player).
+# hacker-news-reader, wiki-instant, internet-radio-player,
+# pokemon-price-ticker).
 #
 # Phase 1: loads real data and persists each extension's cache into the
 # profile. Phase 2: fails every API request via CDP and proves the saved copy
@@ -17,7 +18,7 @@ sleep 1
 rm -rf /tmp/ext-smoke-profile
 
 EXTS=""
-for d in random-fact-generator where-is-iss hacker-news-reader wiki-instant internet-radio-player; do
+for d in random-fact-generator where-is-iss hacker-news-reader wiki-instant internet-radio-player pokemon-price-ticker; do
   EXTS="$EXTS,$BASE/$d/ext"
 done
 EXTS="${EXTS#,}"

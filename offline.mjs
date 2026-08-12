@@ -11,12 +11,13 @@
  *                    an "Offline — saved …" status and no uncaught
  *                    exceptions.
  *
- * Covers the five offline-capable extensions:
+ * Covers the six offline-capable extensions:
  *   - random-fact-generator (kept last-good fact)
  *   - where-is-iss          (last known fix, STALE badge)
  *   - hacker-news-reader    (last-good stories per tab)
  *   - wiki-instant          (last opened article)
  *   - internet-radio-player (last station list)
+ *   - pokemon-price-ticker  (cached card quotes)
  *
  * The Chrome profile must persist across the whole run (see run-offline.sh)
  * so the phase-1 cache is readable in phase 2. Exit 0 = all phases pass.
@@ -94,6 +95,68 @@ const EXTS = {
     offline: {
       waitMs: 8000, check: (d) => d.stations >= 10 && /Offline/.test(d.status) && d.staleClass === 'stale-fresh',
       label: 'cached stations + Offline status + green staleness class',
+    },
+  },
+  'pokemon-price-ticker': {
+    block: ['*api.pokemontcg.io*'],
+    online: {
+      waitMs: 8000,
+      check: (d) => d.rows === 1 && /^\$/.test(d.price || '') && d.quoteLanded === true,
+      label: 'card added with a landed quote',
+      steps: [
+        { after: 800, run: `(() => {
+            const s = document.querySelector('#search');
+            s.value = 'charizard';
+            s.dispatchEvent(new Event('input', { bubbles: true }));
+            return true;
+          })()` },
+        { waitFor: `document.querySelectorAll('.res-row').length > 0`, waitForMs: 12000, run: `(() => {
+            const r = document.querySelector('.res-row');
+            if (r) r.click();
+            return !!r;
+          })()` },
+        // second search attempt: the feed can flap, and the extension's own
+        // 3-try ladder covers short bad windows — this covers longer ones.
+        { after: 400, run: `(() => {
+            const s = document.querySelector('#search');
+            s.value = 'charizard';
+            s.dispatchEvent(new Event('input', { bubbles: true }));
+            return true;
+          })()` },
+        { waitFor: `document.querySelectorAll('.res-row').length > 0`, waitForMs: 12000, run: `(() => {
+            const r = document.querySelector('.res-row');
+            if (r) r.click();
+            return !!r;
+          })()` },
+        // third search attempt for long bad windows (the feed has had
+        // multi-minute outages where even a 3-try ladder isn't enough)
+        { after: 400, run: `(() => {
+            const s = document.querySelector('#search');
+            s.value = 'charizard';
+            s.dispatchEvent(new Event('input', { bubbles: true }));
+            return true;
+          })()` },
+        { waitFor: `document.querySelectorAll('.res-row').length > 0`, waitForMs: 12000, run: `(() => {
+            const r = document.querySelector('.res-row');
+            if (r) r.click();
+            return !!r;
+          })()` },
+        // Give the quote one more full chance: if it hasn't landed yet, click
+        // Refresh (re-fires the quote fetches with their own 3-try ladder).
+        { waitFor: `new Promise((res) => chrome.storage.local.get('ptWatchlist', (d) => {
+            const w = d && d.ptWatchlist;
+            res(Array.isArray(w) && w[0] && typeof w[0].ts === 'number');
+          }))`, waitForMs: 20000, run: `(() => {
+            const r = document.querySelector('#refresh');
+            if (r) r.click();
+            return !!r;
+          })()` },
+      ],
+    },
+    offline: {
+      waitMs: 8000,
+      check: (d) => d.rows === 1 && /^\$/.test(d.price || '') && /Offline/.test(d.status) && d.staleClass === 'stale-fresh',
+      label: 'cached quote + Offline status + green staleness class',
     },
   },
 };
@@ -234,6 +297,22 @@ function snapshotExpr(name) {
         extract: e ? e.textContent.trim().length : 0,
         status: s ? s.textContent.trim() : '',
         staleClass: ${staleClass},
+      };
+    })()`;
+  }
+  if (name === 'pokemon-price-ticker') {
+    return `(async () => {
+      const s = document.querySelector('#status');
+      const quote = await new Promise((res) => chrome.storage.local.get('ptWatchlist', (d) => {
+        const w = d && d.ptWatchlist;
+        res(Array.isArray(w) && w[0] && typeof w[0].ts === 'number');
+      }));
+      return {
+        rows: document.querySelectorAll('.card-row').length,
+        price: (document.querySelector('.card-price') || { textContent: '' }).textContent,
+        status: s ? s.textContent.trim() : '',
+        staleClass: ${staleClass},
+        quoteLanded: quote,
       };
     })()`;
   }

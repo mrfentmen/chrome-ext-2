@@ -23,6 +23,7 @@ const EXTS = {
   'whiteboard':              { check: (d) => true },
   'internet-radio-player':   { check: (d) => true },
   'hacker-news-reader':      { check: (d) => (d.count || '').includes('stories') },
+  'pokemon-price-ticker':    { check: (d) => true },
 };
 
 function extId(absPath) {

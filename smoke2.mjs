@@ -197,6 +197,42 @@ async function run() {
     await cdp.send('Target.closeTarget', { targetId: p.t.targetId });
   }
 
+  // ---- pokemon-price-ticker: search -> add -> quote lands + ticker ----
+  {
+    const p = await openPopup('pokemon-price-ticker');
+    await sleep(2000);
+    // two search attempts: the pokemontcg.io feed can flap for a minute
+    let added = false;
+    for (let attempt = 0; attempt < 2 && !added; attempt++) {
+      await evalIn(cdp, p.sid, `(() => {
+        const s = document.querySelector('#search');
+        s.value = 'charizard';
+        s.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
+      })()`);
+      await sleep(6000);
+      const resCount = await evalIn(cdp, p.sid, `document.querySelectorAll('.res-row').length`);
+      if (resCount > 0) {
+        await evalIn(cdp, p.sid, `(() => { const r = document.querySelector('.res-row'); if (r) r.click(); return !!r; })()`);
+        added = true;
+      }
+    }
+    let quoteLanded = false;
+    for (let t0 = Date.now(); Date.now() - t0 < 15000 && !quoteLanded;) {
+      quoteLanded = await evalIn(cdp, p.sid, `new Promise((res) => chrome.storage.local.get('ptWatchlist', (d) => {
+        const w = d && d.ptWatchlist;
+        res(Array.isArray(w) && w[0] && typeof w[0].ts === 'number');
+      }))`) === true;
+      if (!quoteLanded) await sleep(1000);
+    }
+    const rows = await evalIn(cdp, p.sid, `document.querySelectorAll('.card-row').length`);
+    const price = await evalIn(cdp, p.sid, `(() => { const p = document.querySelector('.card-price'); return p ? p.textContent : ''; })()`);
+    const tapeItems = await evalIn(cdp, p.sid, `document.querySelectorAll('.tape-item').length`);
+    results['pokemon-price-ticker'] = { added, rows, price, tapeItems, quoteLanded,
+      ok: rows === 1 && price.startsWith('$') && quoteLanded && tapeItems >= 2 };
+    await cdp.send('Target.closeTarget', { targetId: p.t.targetId });
+  }
+
   console.log(JSON.stringify(results, null, 2));
   const allOk = Object.values(results).every((r) => r.ok);
   console.log('\n=== OVERALL:', allOk ? 'ALL FLOWS PASS' : 'FLOWS FAILED', '===');
