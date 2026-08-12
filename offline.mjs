@@ -31,6 +31,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Per-extension test plan. `block` are Fetch urlPatterns for the API hosts;
 // `online` / `offline` describe each phase.
 const EXTS = {
+  'random-fact-generator': {
+    block: ['*uselessfacts.jsph.pl*'],
+    online: { waitMs: 4000, check: (d) => d.fact.length > 5 && !/Oops/.test(d.fact) && !/Loading/.test(d.fact), label: 'fact renders' },
+    offline: {
+      waitMs: 8000, check: (d) => d.fact.length > 5 && /Offline/.test(d.status),
+      label: 'kept fact + Offline status',
+    },
+  },
   'where-is-iss': {
     block: ['*api.open-notify.org*'],
     online: { waitMs: 4000, check: (d) => /°/.test(d.coord || ''), label: 'live fix renders' },
@@ -183,6 +191,15 @@ async function runSteps(cdp, sid, steps) {
 }
 
 function snapshotExpr(name) {
+  if (name === 'random-fact-generator') {
+    return `(() => {
+      const s = document.querySelector('#status');
+      return {
+        fact: (document.querySelector('#fact-text') || {}).textContent || '',
+        status: s ? s.textContent.trim() : '',
+      };
+    })()`;
+  }
   if (name === 'where-is-iss') {
     return `(() => {
       const s = document.querySelector('#status');
